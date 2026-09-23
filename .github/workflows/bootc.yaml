@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +39,7 @@ jobs:
           path: target/unittest
 
   integration:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -51,6 +51,10 @@ jobs:
       - uses: bootc-dev/actions/bootc-ubuntu-setup@main
         with:
           libvirt: true
+      # Match the Python runtime tmt is used with in bootc CI
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
       - name: Install tmt
         run: pip install --user "tmt[provision-virtual]"
 

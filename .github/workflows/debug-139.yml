@@ -1,0 +1,62 @@
+# Temporary: reproduce the intermittent exit 139 in `just build` and capture
+# a core dump / kernel report of whichever process dies with SIGSEGV.
+name: debug-139
+on:
+  push:
+    branches: [bot/ci-bootc-segv-test]
+  workflow_dispatch: {}
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        stream: [stream9, stream10]
+        n: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: bootc-dev/actions/bootc-ubuntu-setup@main
+      - name: Environment and coredump setup
+        run: |
+          set -x
+          uname -a
+          grep -m1 'model name' /proc/cpuinfo; nproc
+          podman version
+          dpkg-query -W podman crun buildah conmon golang-github-containers-common passt || true
+          sudo apt-get install -y systemd-coredump gdb
+          sudo sysctl -w fs.suid_dumpable=2 kernel.print-fatal-signals=1
+          cat /proc/sys/kernel/core_pattern
+          sudo dmesg -C
+      - name: Loop builds
+        run: |
+          ulimit -c unlimited
+          for i in 1 2 3; do
+            echo "::group::iteration $i"
+            rc=0
+            STREAM=${{ matrix.stream }} just build --no-cache || rc=$?
+            echo "::endgroup::"
+            echo "iteration $i rc=$rc"
+            if [ $rc != 0 ]; then echo "iteration $i rc=$rc" >> $GITHUB_STEP_SUMMARY; exit $rc; fi
+          done
+      - name: Gather crash data
+        if: always()
+        run: |
+          set -x
+          sudo dmesg | tail -n 150
+          sudo coredumpctl list --no-pager || true
+          mkdir -p crash
+          for pid in $(sudo coredumpctl list --no-pager -q -F COREDUMP_PID 2>/dev/null); do
+            sudo coredumpctl info --no-pager $pid || true
+            sudo coredumpctl dump $pid -o crash/core.$pid || true
+            exe=$(sudo coredumpctl list --no-pager -q -F COREDUMP_EXE $pid | head -1)
+            sudo gdb -batch -ex 'info registers' -ex 'x/6i $pc' -ex 'info threads' -ex 'thread apply all bt 30' "$exe" crash/core.$pid || true
+          done
+          cp /usr/bin/podman crash/ || true
+          sudo chmod -R a+r crash
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: crash-${{ matrix.stream }}-${{ matrix.n }}
+          path: crash

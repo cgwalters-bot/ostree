@@ -5,9 +5,9 @@ permissions:
 
 on:
   push:
-    branches: [main]
+    branches: [main, bot/ci-bootc-segv-test]
   pull_request:
-    branches: [main]
+    branches: [main, bot/ci-bootc-segv-test]
   workflow_dispatch: {}
 
 concurrency:

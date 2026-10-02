@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: bootc-dev/actions/bootc-ubuntu-setup@main
+      - uses: cgwalters-forge/bootc-dev-actions/bootc-ubuntu-setup@ec35d2880dcf935dd20c73c5ca9e3385eba2546b
 
       - name: unitcontainer
         run: STREAM=${{ matrix.stream }} just unitcontainer
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: bootc-dev/actions/bootc-ubuntu-setup@main
+      - uses: cgwalters-forge/bootc-dev-actions/bootc-ubuntu-setup@ec35d2880dcf935dd20c73c5ca9e3385eba2546b
         with:
           libvirt: true
       - name: Install tmt
